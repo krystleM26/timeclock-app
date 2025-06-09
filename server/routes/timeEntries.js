@@ -6,7 +6,7 @@ const {
     getTimeEntries
   } = require('../controllers/timeEntryControllers');
   
-  router.post('/', createTimeEntry);
   router.get('/', getTimeEntries);
+  router.post('/', createTimeEntry);
 
   module.exports = router;
