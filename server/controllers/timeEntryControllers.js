@@ -1,7 +1,9 @@
 const TimeEntry = require('../models/TimeEntry');
 const User = require('../models/User');
 
-exports.createTimeEntry = async (req, res) => {
+
+  exports.createTimeEntry = async (req, res) => {
+    console.log('createTimeEntry called with:', req.body);
     try {
         const { name, date, hoursWorked, notes } = req.body;
         let user = await User.findOne({ name });
@@ -10,7 +12,7 @@ exports.createTimeEntry = async (req, res) => {
             await user.save();
           }
           const newEntry = new TimeEntry({
-            userId: user._id,
+            userId: user.id,
             date,
             hoursWorked,
             notes

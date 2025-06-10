@@ -20,10 +20,10 @@ function App() {
     e.preventDefault();
 
     try {
-      const res = await fetch('http://localhost:5000/api/time-entries', {
+      const res = await fetch('http://localhost:5000/timeEntries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
 
       if (res.ok) {
