@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import TimeEntryForm from './TimeEntryForm';
+import EditModal from './EditModal';
 
 const App = () => {
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     date: '',
     hoursWorked: '',
     notes: ''
@@ -11,13 +14,13 @@ const App = () => {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitStatus, setSubmitStatus] = useState(null);
+  const [editingEntry, setEditingEntry] = useState(null);
 
-  // Fetch past time entries on load
+  // Fetch entries on mount
   useEffect(() => {
     fetch('http://localhost:5050/timeEntries')
       .then(res => res.json())
       .then(data => {
-        console.log('📝 Fetched entries:', data);
         setEntries(data);
         setLoading(false);
       })
@@ -27,33 +30,87 @@ const App = () => {
       });
   }, []);
 
-  // Handle form submission
+  // Handle create
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitStatus(null);
 
+    if (!formData.firstName || !formData.lastName) {
+      alert('First and last name are required.');
+      return;
+    }
+
+    const fullName = `${formData.firstName?.trim()} ${formData.lastName?.trim()}`.trim();
+    console.log('📤 Submitting full name:', fullName);
+
     try {
       const res = await fetch('http://localhost:5050/timeEntries', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: fullName,
+          date: formData.date,
+          hoursWorked: formData.hoursWorked,
+          notes: formData.notes
+        })
       });
 
       const data = await res.json();
+
       if (res.ok) {
-        console.log('✅ Entry created:', data);
         setSubmitStatus('success');
-        setEntries(prev => [...prev, data.entry]); // Update list with new entry
-        setFormData({ name: '', date: '', hoursWorked: '', notes: '' }); // Clear form
+        setEntries(prev => [...prev, data.entry]);
+        setFormData({
+          firstName: '',
+          lastName: '',
+          date: '',
+          hoursWorked: '',
+          notes: ''
+        });
       } else {
         console.error('❌ Backend error:', data);
         setSubmitStatus('error');
       }
     } catch (err) {
-      console.error('❌ Fetch error:', err);
+      console.error('❌ Submit error:', err);
       setSubmitStatus('error');
+    }
+  };
+
+  // Handle delete
+  const handleDelete = async (id) => {
+    try {
+      await fetch(`http://localhost:5050/timeEntries/${id}`, {
+        method: 'DELETE'
+      });
+      setEntries(prev => prev.filter(entry => entry._id !== id));
+    } catch (err) {
+      console.error('❌ Delete failed:', err);
+    }
+  };
+
+  // Handle edit submit
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`http://localhost:5050/timeEntries/${editingEntry._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingEntry)
+      });
+
+      const updated = await res.json();
+
+      if (res.ok) {
+        setEntries(prev =>
+          prev.map(entry => (entry._id === updated._id ? updated : entry))
+        );
+        setEditingEntry(null);
+      } else {
+        console.error('❌ Update failed:', updated);
+      }
+    } catch (err) {
+      console.error('❌ Edit error:', err);
     }
   };
 
@@ -61,58 +118,11 @@ const App = () => {
     <div style={{ padding: '2rem', fontFamily: 'Arial' }}>
       <h1>🕒 Time Clock App</h1>
 
-      <form onSubmit={handleSubmit} style={{ marginBottom: '2rem' }}>
-        <div>
-          <label>First Name:</label><br />
-          <input
-            type="text"
-            value={formData.name}
-            required
-            onChange={e => setFormData({ ...formData, name: e.target.value })}
-          />
-        </div>
-
-        <div>
-          <label>Last Name:</label><br />
-          <input
-            type="text"
-            value={formData.name}
-            required
-            onChange={e => setFormData({ ...formData, name: e.target.value })}
-          />
-        </div>
-
-        <div>
-          <label>Date:</label><br />
-          <input
-            type="date"
-            value={formData.date}
-            required
-            onChange={e => setFormData({ ...formData, date: e.target.value })}
-          />
-        </div>
-
-        <div>
-          <label>Hours Worked:</label><br />
-          <input
-            type="number"
-            step="0.1"
-            value={formData.hoursWorked}
-            required
-            onChange={e => setFormData({ ...formData, hoursWorked: e.target.value })}
-          />
-        </div>
-
-        <div>
-          <label>Notes:</label><br />
-          <textarea
-            value={formData.notes}
-            onChange={e => setFormData({ ...formData, notes: e.target.value })}
-          />
-        </div>
-
-        <button type="submit">Submit Entry</button>
-      </form>
+      <TimeEntryForm
+        formData={formData}
+        onChange={setFormData}
+        onSubmit={handleSubmit}
+      />
 
       {submitStatus === 'success' && <p style={{ color: 'green' }}>✅ Entry submitted!</p>}
       {submitStatus === 'error' && <p style={{ color: 'red' }}>❌ Something went wrong.</p>}
@@ -126,11 +136,23 @@ const App = () => {
         <ul>
           {entries.map((entry) => (
             <li key={entry._id}>
-              <strong>{entry.userId?.name}</strong> — {entry.hoursWorked} hrs on{' '}
+              <strong>{entry.name || '[No name]'}</strong> — {entry.hoursWorked} hrs on{' '}
               {new Date(entry.date).toLocaleDateString()} ({entry.notes})
+              <br />
+              <button onClick={() => setEditingEntry(entry)}>✏️ Edit</button>
+              <button onClick={() => handleDelete(entry._id)}>🗑️ Delete</button>
             </li>
           ))}
         </ul>
+      )}
+
+      {editingEntry && (
+        <EditModal
+          entry={editingEntry}
+          onChange={setEditingEntry}
+          onCancel={() => setEditingEntry(null)}
+          onSubmit={handleEditSubmit}
+        />
       )}
     </div>
   );
