@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import TimeEntryForm from './TimeEntryForm';
-import EditModal from './EditModal';
+import TimeEntryForm from './components/time-form';
+import EditModal from './components/EditModel';
 
 const App = () => {
   const [formData, setFormData] = useState({
