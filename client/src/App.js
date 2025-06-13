@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import TimeEntryForm from './components/time-form';
 import EditModal from './components/EditModal';
 import FileImporter from './components/FileImporter';
+import TotalHoursSummary from './components/TotalHoursSummary';
+import SummaryModal from './components/SummaryModal';
 
 const App = () => {
   const [formData, setFormData] = useState({
@@ -16,6 +18,10 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [submitStatus, setSubmitStatus] = useState(null);
   const [editingEntry, setEditingEntry] = useState(null);
+  const [showSummary, setShowSummary] = useState(false);
+  const [viewAll, setViewAll] = useState(true);
+  const [selectedName, setSelectedName] = useState('');
+  const [dateRange, setDateRange] = useState({ from: '', to: '' });
 
   useEffect(() => {
     fetch('http://localhost:5050/timeEntries')
@@ -133,6 +139,34 @@ const App = () => {
     setEntries(prev => [...prev, ...results]);
   };
 
+  const filteredEntries = entries.filter(entry => {
+    const entryDate = new Date(entry.date);
+    const from = dateRange.from ? new Date(dateRange.from) : null;
+    const to = dateRange.to ? new Date(dateRange.to) : null;
+
+    const matchesName = viewAll || entry.name === selectedName;
+    const matchesDate = (!from || entryDate >= from) && (!to || entryDate <= to);
+
+    return matchesName && matchesDate;
+  });
+
+  const getWeeklySummaries = () => {
+    const summaries = {};
+
+    entries.forEach(entry => {
+      const name = entry.name || '[No Name]';
+      const date = new Date(entry.date);
+      const weekKey = `${date.getFullYear()}-W${Math.ceil((date.getDate() + 6 - date.getDay()) / 7)}`;
+
+      if (!summaries[name]) summaries[name] = {};
+      if (!summaries[name][weekKey]) summaries[name][weekKey] = 0;
+
+      summaries[name][weekKey] += Number(entry.hoursWorked) || 0;
+    });
+
+    return summaries;
+  };
+
   return (
     <div style={{ padding: '2rem', fontFamily: 'Arial' }}>
       <h1>🕒 Time Clock App</h1>
@@ -150,14 +184,48 @@ const App = () => {
 
       <FileImporter onImport={handleFileImport} />
 
+      <div style={{ marginBottom: '1rem' }}>
+        <label>
+          <input
+            type="checkbox"
+            checked={viewAll}
+            onChange={(e) => setViewAll(e.target.checked)}
+          />
+          View All
+        </label>
+
+        {!viewAll && (
+          <select
+            value={selectedName}
+            onChange={(e) => setSelectedName(e.target.value)}
+          >
+            <option value="">-- Select Staff --</option>
+            {[...new Set(entries.map(e => e.name))].map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        )}
+
+        <div style={{ marginTop: '0.5rem' }}>
+          <label>From: <input type="date" value={dateRange.from} onChange={e => setDateRange(prev => ({ ...prev, from: e.target.value }))} /></label>
+          <label style={{ marginLeft: '1rem' }}>To: <input type="date" value={dateRange.to} onChange={e => setDateRange(prev => ({ ...prev, to: e.target.value }))} /></label>
+        </div>
+
+        <button onClick={() => setShowSummary(true)} style={{ marginTop: '1rem' }}>
+          📊 View Weekly Summary
+        </button>
+      </div>
+
+      <TotalHoursSummary entries={filteredEntries} />
+
       <h2>📋 Past Time Entries</h2>
       {loading ? (
         <p>Loading...</p>
-      ) : entries.length === 0 ? (
+      ) : filteredEntries.length === 0 ? (
         <p>No entries yet.</p>
       ) : (
         <ul>
-          {entries.map((entry) => (
+          {filteredEntries.map((entry) => (
             <li key={entry._id}>
               <strong>{entry.name || '[No name]'}</strong> — {entry.hoursWorked} hrs on{' '}
               {new Date(entry.date).toLocaleDateString()} ({entry.notes})
@@ -175,6 +243,13 @@ const App = () => {
           onChange={setEditingEntry}
           onCancel={() => setEditingEntry(null)}
           onSubmit={handleEditSubmit}
+        />
+      )}
+
+      {showSummary && (
+        <SummaryModal
+          summaries={getWeeklySummaries()}
+          onClose={() => setShowSummary(false)}
         />
       )}
     </div>

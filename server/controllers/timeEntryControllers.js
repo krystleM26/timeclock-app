@@ -1,6 +1,7 @@
 const TimeEntry = require('../models/TimeEntry');
 const User = require('../models/User');
 
+
 exports.createTimeEntry = async (req, res) => {
   console.log('📌 Controller hit: createTimeEntry');
   try {
@@ -66,4 +67,65 @@ exports.deleteTimeEntry = async (req, res) => {
     res.status(500).json({ message: 'Delete failed', error: err.message });
   }
 };
+
+exports.getSummaryByRange = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const query = {
+      date: {
+        ...(startDate && { $gte: new Date(startDate) }),
+        ...(endDate && { $lte: new Date(endDate) }),
+      },
+    };
+
+    const summary = await TimeEntry.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: "$userId",
+          totalHours: { $sum: "$hoursWorked" },
+          entries: { $push: "$date" },
+        },
+      },
+    ]);
+
+    res.json(summary);
+  } catch (err) {
+    console.error("❌ Summary error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+exports.getSummaryByRange = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const query = {
+      date: {
+        ...(startDate && { $gte: new Date(startDate) }),
+        ...(endDate && { $lte: new Date(endDate) }),
+      },
+    };
+
+    const summary = await TimeEntry.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: "$userId",
+          totalHours: { $sum: "$hoursWorked" },
+          entries: { $push: "$date" },
+        },
+      },
+    ]);
+
+    res.json(summary);
+  } catch (err) {
+    console.error("❌ Summary error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
+
 
