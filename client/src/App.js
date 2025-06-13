@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import TimeEntryForm from './components/time-form';
-import EditModal from './components/EditModel';
+import EditModal from './components/EditModal';
 import FileImporter from './components/FileImporter';
-
 
 const App = () => {
   const [formData, setFormData] = useState({
@@ -18,7 +17,6 @@ const App = () => {
   const [submitStatus, setSubmitStatus] = useState(null);
   const [editingEntry, setEditingEntry] = useState(null);
 
-  // Fetch entries on mount
   useEffect(() => {
     fetch('http://localhost:5050/timeEntries')
       .then(res => res.json())
@@ -32,18 +30,16 @@ const App = () => {
       });
   }, []);
 
-  // Handle create
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitStatus(null);
 
-    if (!formData.firstName || !formData.lastName) {
-      alert('First and last name are required.');
+    const fullName = `${formData.firstName?.trim()} ${formData.lastName?.trim()}`.trim();
+
+    if (!fullName || !formData.date || !formData.hoursWorked) {
+      alert('Missing required fields.');
       return;
     }
-
-    const fullName = `${formData.firstName?.trim()} ${formData.lastName?.trim()}`.trim();
-    console.log('📤 Submitting full name:', fullName);
 
     try {
       const res = await fetch('http://localhost:5050/timeEntries', {
@@ -70,8 +66,8 @@ const App = () => {
           notes: ''
         });
       } else {
-        console.error('❌ Backend error:', data);
         setSubmitStatus('error');
+        console.error('❌ Backend error:', data);
       }
     } catch (err) {
       console.error('❌ Submit error:', err);
@@ -79,19 +75,15 @@ const App = () => {
     }
   };
 
-  // Handle delete
   const handleDelete = async (id) => {
     try {
-      await fetch(`http://localhost:5050/timeEntries/${id}`, {
-        method: 'DELETE'
-      });
+      await fetch(`http://localhost:5050/timeEntries/${id}`, { method: 'DELETE' });
       setEntries(prev => prev.filter(entry => entry._id !== id));
     } catch (err) {
       console.error('❌ Delete failed:', err);
     }
   };
 
-  // Handle edit submit
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -116,34 +108,30 @@ const App = () => {
     }
   };
 
-  const handleBulkImport = async (entriesToImport) => {
-    const formatted = entriesToImport.map((e) => ({
-      name: e.name,
-      date: e.date,
-      hoursWorked: Number(e.hoursWorked),
-      notes: e.notes || '',
-    }));
-  
-    try {
-      for (let entry of formatted) {
+  const handleFileImport = async (parsedEntries) => {
+    const results = [];
+
+    for (const entry of parsedEntries) {
+      const fullName = entry.name || `${entry.firstName || ''} ${entry.lastName || ''}`.trim();
+      try {
         const res = await fetch('http://localhost:5050/timeEntries', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(entry)
+          body: JSON.stringify({ ...entry, name: fullName })
         });
+        const data = await res.json();
         if (res.ok) {
-          const data = await res.json();
-          setEntries(prev => [...prev, data.entry]);
+          results.push(data.entry);
+        } else {
+          console.error('❌ Error importing entry:', data);
         }
+      } catch (err) {
+        console.error('❌ Error during import:', err);
       }
-      alert('✅ Import complete!');
-    } catch (err) {
-      console.error('❌ Bulk import error:', err);
-      alert('Import failed.');
     }
-  };
 
-  
+    setEntries(prev => [...prev, ...results]);
+  };
 
   return (
     <div style={{ padding: '2rem', fontFamily: 'Arial' }}>
@@ -154,10 +142,13 @@ const App = () => {
         onChange={setFormData}
         onSubmit={handleSubmit}
       />
-      <FileImporter onImport={handleBulkImport} />
 
       {submitStatus === 'success' && <p style={{ color: 'green' }}>✅ Entry submitted!</p>}
       {submitStatus === 'error' && <p style={{ color: 'red' }}>❌ Something went wrong.</p>}
+
+      <hr style={{ margin: '2rem 0' }} />
+
+      <FileImporter onImport={handleFileImport} />
 
       <h2>📋 Past Time Entries</h2>
       {loading ? (

@@ -26,6 +26,8 @@
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "mongodb": "3.7",
-    "mongoose": "^8.15.1"
+    "mongoose": "^8.15.1",
+    "papaparse": "^5.5.3",
+    "pdfjs-dist": "^5.3.31"
   }
 }
