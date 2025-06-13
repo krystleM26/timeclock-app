@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import TimeEntryForm from './components/time-form';
 import EditModal from './components/EditModel';
+import FileImporter from './components/FileImporter';
+
 
 const App = () => {
   const [formData, setFormData] = useState({
@@ -114,6 +116,35 @@ const App = () => {
     }
   };
 
+  const handleBulkImport = async (entriesToImport) => {
+    const formatted = entriesToImport.map((e) => ({
+      name: e.name,
+      date: e.date,
+      hoursWorked: Number(e.hoursWorked),
+      notes: e.notes || '',
+    }));
+  
+    try {
+      for (let entry of formatted) {
+        const res = await fetch('http://localhost:5050/timeEntries', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(entry)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setEntries(prev => [...prev, data.entry]);
+        }
+      }
+      alert('✅ Import complete!');
+    } catch (err) {
+      console.error('❌ Bulk import error:', err);
+      alert('Import failed.');
+    }
+  };
+
+  
+
   return (
     <div style={{ padding: '2rem', fontFamily: 'Arial' }}>
       <h1>🕒 Time Clock App</h1>
@@ -123,6 +154,7 @@ const App = () => {
         onChange={setFormData}
         onSubmit={handleSubmit}
       />
+      <FileImporter onImport={handleBulkImport} />
 
       {submitStatus === 'success' && <p style={{ color: 'green' }}>✅ Entry submitted!</p>}
       {submitStatus === 'error' && <p style={{ color: 'red' }}>❌ Something went wrong.</p>}
