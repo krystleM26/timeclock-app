@@ -23,7 +23,12 @@ function App() {
       const res = await fetch('http://localhost:5000/timeEntries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: 'Krystle Mitchell',
+          date: '2025-06-12',
+          hoursWorked: 8,
+          notes: 'From frontend'
+        }),
       });
 
       if (res.ok) {

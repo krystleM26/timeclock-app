@@ -2,17 +2,15 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../.env') }); // 🔑 .env must be loaded early
+const timeEntryRoutes = require('./routes/timeEntries');
+const dotenv = require('dotenv').config({ path: path.resolve(__dirname, '../.env') }); // 🔑 .env must be loaded early
+
+
 
 const app = express();
 
 // ✅ 1. Apply CORS first
-app.use(cors({
-  origin: 'http://localhost:3000',
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type'],
-  credentials: true,
-}));
+app.use(cors());
 
 // ✅ 2. Middleware to parse JSON
 app.use(express.json());
@@ -29,7 +27,6 @@ app.use((req, res, next) => {
 });
 
 // ✅ 5. Register routes
-const timeEntryRoutes = require('./routes/timeEntries');
 app.use('/timeEntries', timeEntryRoutes);
 
 // ✅ 6. Basic test routes
@@ -43,7 +40,7 @@ app.post('/test', (req, res) => {
 });
 
 // ✅ 7. Start server
-const PORT = 5000;
+const PORT = 5050;
 app.listen(PORT, () => {
   console.log(`✅ Server live at http://localhost:${PORT}`);
 });
